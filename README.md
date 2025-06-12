@@ -18,3 +18,19 @@ This project lets you speak “Create VLAN 10” and automatically provisions VL
    ```bash
    git clone https://github.com/YourUsername/vlan-provisioner.git
    cd vlan-provisioner
+
+2. Create a virtualenv and install deps:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install flask paramiko
+
+3. Run the API:
+   ```bash
+   python ovs_vlan_api.py
+
+4. Test with curl:
+   ```bash
+   curl -X POST http://localhost:5000/vlan/create \
+   -H "Content-Type: application/json" \
+   -d '{"id":20}'
