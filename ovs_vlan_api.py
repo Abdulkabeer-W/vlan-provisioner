@@ -1,50 +1,179 @@
 from flask import Flask, request, jsonify
 import paramiko
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    handlers=[
+        logging.FileHandler("vapi_requests.log"),
+        logging.StreamHandler()
+    ]
+)
+
 
 app = Flask(__name__)
 
+# VM credentials and IPs
 HOSTS = [
-    {'host':'192.168.100.11','username':'ubuntu','password':'2002'},
-    {'host':'192.168.100.12','username':'ubuntu','password':'2002'}
+    {'host': '192.168.56.108', 'username': 'ubuntu', 'password': '2002'},
+    {'host': '192.168.56.104', 'username': 'ubuntu', 'password': '2002'}
 ]
 
+# Function to run remote SSH command with sudo support
 def run_ssh_command(h, cmd):
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(h['host'], username=h['username'], password=h['password'])
-    stdin, stdout, stderr = ssh.exec_command(cmd)
-    output = stdout.read().decode() + stderr.read().decode()
-    ssh.close()
-    return output
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(h['host'], username=h['username'], password=h['password'])
 
+        # Use sudo -S and write password to stdin
+        stdin, stdout, stderr = ssh.exec_command(f"sudo -S sh -c \"{cmd}\"")
+        stdin.write(h['password'] + "\n")
+        stdin.flush()
+
+        output = stdout.read().decode().strip()
+        error = stderr.read().decode().strip()
+
+        filtered_error = "\n".join([
+            line for line in error.splitlines()
+            if not line.strip().startswith("[sudo]")
+        ]).strip()
+
+        ssh.close()
+
+        if filtered_error:
+            return f"⚠️ {filtered_error}"
+        elif output:
+            return output
+        else:
+            return "✅ Command executed successfully"
+
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+
+# Create VLAN
 @app.route('/vlan/create', methods=['POST'])
 def create_vlan():
     vid = request.json.get('id')
+    if not vid:
+        return jsonify({"error": "Missing VLAN ID"}), 400
+
     results = {}
     for h in HOSTS:
         cmd = (
-            f"sudo ovs-vsctl add-port br0 vlan{vid} tag={vid} && "
-            f"sudo ip link set vlan{vid} up"
-        )
+                f"ovs-vsctl add-port br0 vlan{vid} tag={vid} -- set interface vlan{vid} type=internal && "
+                f"ip link set br0 up && "
+                f"ip link set vlan{vid} up"
+        )   
+
         results[h['host']] = run_ssh_command(h, cmd)
     return jsonify(results)
 
+# Delete VLAN
 @app.route('/vlan/delete', methods=['POST'])
 def delete_vlan():
     vid = request.json.get('id')
+    if not vid:
+        return jsonify({"error": "Missing VLAN ID"}), 400
+
     results = {}
     for h in HOSTS:
-        cmd = f"sudo ovs-vsctl del-port br0 vlan{vid}"
+        cmd = f"ovs-vsctl del-port br0 vlan{vid}"
         results[h['host']] = run_ssh_command(h, cmd)
     return jsonify(results)
 
+# List VLANs
 @app.route('/vlan/list', methods=['GET'])
 def list_vlans():
     results = {}
     for h in HOSTS:
-        cmd = "sudo ovs-vsctl list-ports br0"
+        cmd = "ovs-vsctl list-ports br0"
         results[h['host']] = run_ssh_command(h, cmd)
     return jsonify(results)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+def create_vlan_inner(vid):
+    results = {}
+    for h in HOSTS:
+        cmd = (
+            f"ovs-vsctl add-port br0 vlan{vid} tag={vid} -- set interface vlan{vid} type=internal && "
+            f"ip link set br0 up && ip link set vlan{vid} up"
+        )
+        results[h['host']] = run_ssh_command(h, cmd)
+    return jsonify(results)
+
+def delete_vlan_inner(vid):
+    results = {}
+    for h in HOSTS:
+        cmd = f"ovs-vsctl del-port br0 vlan{vid}"
+        results[h['host']] = run_ssh_command(h, cmd)
+    return jsonify(results)
+
+def list_vlans_inner():
+    results = {}
+    for h in HOSTS:
+        cmd = "ovs-vsctl list-ports br0"
+        raw = run_ssh_command(h, cmd)
+        ports = raw.splitlines()
+        results[h['host']] = ports
+    return jsonify(results)
+
+
+
+@app.route('/vapi-tool', methods=['POST'])
+def handle_vapi_tool():
+    try:
+        data = request.get_json()
+        logging.info(f"Received from Vapi:\n{data}")
+
+        tool_call = data["message"]["toolCall"]
+        tool_call_id = tool_call["id"]
+        function_name = tool_call["function"]["name"]
+        parameters = tool_call["function"]["parameters"]
+
+        action = parameters.get("action")
+        vlan_id = parameters.get("vlan_id")
+
+        if action == "create" and vlan_id:
+            response = create_vlan_inner(vlan_id)
+            message = f"VLAN {vlan_id} created successfully."
+        elif action == "delete" and vlan_id:
+            response = delete_vlan_inner(vlan_id)
+            message = f"VLAN {vlan_id} deleted successfully."
+        elif action == "list":
+            vlan_data = list_vlans_inner().get_json()
+            message = "VLANs on hosts:\n" + "\n".join(
+                [f"{host}: {', '.join(ports)}" for host, ports in vlan_data.items()]
+            )
+        else:
+            message = "Invalid parameters or missing VLAN ID."
+
+        result = {
+            "results": [
+                {
+                    "toolCallId": tool_call_id,
+                    "result": message
+                }
+            ]
+        }
+    
+        logging.info(f"Response sent to Vapi:\n{result}")
+        return jsonify(result)
+
+
+    except Exception as e:
+        error_result = {
+            "results": [
+                {
+                    "toolCallId": data.get("message", {}).get("toolCall", {}).get("id", "unknown"),
+                    "result": f"Error processing the request: {str(e)}"
+                }
+            ]
+        }
+        logging.error(f"Exception occurred:\n{str(e)}")
+        return jsonify(error_result), 500
