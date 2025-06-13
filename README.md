@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Voice-Driven VLAN Provisioner
 
 A lightweight Flask-based API to remotely create, delete, and list VLANs on multiple Ubuntu VMs using SSH and Open vSwitch (OVS). This version includes the core networking logic, without voice integration.
