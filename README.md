@@ -51,8 +51,8 @@ Update the `HOSTS` list in `ovs_vlan_api.py` with your VM IPs and credentials:
 
 ```python
 HOSTS = [
-  {'host': '192.168.56.108', 'username': 'ubuntu', 'password': '2002'},
-  {'host': '192.168.56.104', 'username': 'ubuntu', 'password': '2002'}
+    {'host':'<host-1-ip-address>','username':'<host-1-username>','password':'<host-1-password>'},
+    {'host':'<host-2-ip-address>','username':'<host-1-username>','password':'<host-2-password>'}
 ]
 ```
 
