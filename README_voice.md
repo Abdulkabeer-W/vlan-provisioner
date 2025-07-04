@@ -137,3 +137,12 @@ vlan-provisioner/
 ## 🛡 License
 
 MIT
+
+
+## 🔧 VLAN Creation Demo
+
+![Vapi UI](assets/vapi_UI.png)
+
+## 🎙️ Voice-Controlled VLAN with Vapi
+
+![Vapi x n8n Integration](assets/n8n_workflow.png)
