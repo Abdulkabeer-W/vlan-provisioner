@@ -94,7 +94,7 @@ You're a network assistant that helps users manage VLANs. When a user asks to cr
 * Create an `HTTP Webhook Trigger` node in n8n
 * Parse incoming `toolCall` data from Vapi
 * Use `HTTP Request` node to forward to Flask
-* Return result as plain text or JSON to Vapi
+* Return result as JSON to Vapi
 
 ---
 
@@ -103,11 +103,9 @@ You're a network assistant that helps users manage VLANs. When a user asks to cr
 ```
 vlan-provisioner/
 ├── ovs_vlan_api.py           # Flask app
-├── requirements.txt          # Python deps
 ├── .gitignore
 ├── README.md
 ├── README_voice.md           # (This file)
-└── vapi_requests.log         # Logs from Vapi-triggered commands
 ```
 
 ---
