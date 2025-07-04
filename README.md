@@ -104,8 +104,8 @@ You're a network assistant that helps users manage VLANs. When a user asks to cr
 vlan-provisioner/
 ├── ovs_vlan_api.py           # Flask app
 ├── .gitignore
-├── README.md
-├── README_voice.md           # (This file)
+├── README.md                 # (This file)
+├── README_voice.md           # (copy of README.md)
 ```
 
 ---
