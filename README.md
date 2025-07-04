@@ -145,6 +145,6 @@ MIT
 
 ![Vapi UI](assets/vapi_UI.png)
 
-## 🎙️ n8n x vapi Integration
+### 🎙️ n8n x vapi Integration
 
 ![Vapi x n8n Integration](assets/n8n_workflow.png)
