@@ -139,10 +139,12 @@ vlan-provisioner/
 MIT
 
 
-## 🔧 VLAN Creation Demo
+## 🔧 VLAN Creation Screenshots
+
+### 🧩 Vapi UI
 
 ![Vapi UI](assets/vapi_UI.png)
 
-## 🎙️ Voice-Controlled VLAN with Vapi
+## 🎙️ n8n x vapi Integration
 
 ![Vapi x n8n Integration](assets/n8n_workflow.png)
